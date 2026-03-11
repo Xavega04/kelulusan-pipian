@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Pengumuman Kelulusan</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+
+body{
+margin:0;
+font-family:'Times New Roman',serif;
+background:url('Galeri1-2.jpg') no-repeat center center fixed;
+background-size:cover;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+}
+
+.container{
+width:950px;
+background:rgba(255,255,255,0.97);
+padding:30px;
+border-radius:12px;
+box-shadow:0 10px 25px rgba(0,0,0,0.3);
+}
+
+.headerBox{
+display:flex;
+align-items:center;
+gap:15px;
+margin-bottom:20px;
+}
+
+.headerBox img{
+width:120px;
+cursor:pointer;
+}
+
+input,select{
+width:100%;
+padding:8px;
+margin:5px 0;
+border-radius:6px;
+border:1px solid #aaa;
+}
+
+button{
+padding:8px 15px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+font-weight:bold;
+margin:4px;
+}
+
+.primary{background:#1f4e79;color:white;}
+.success{background:#2e8b57;color:white;}
+.hidden{display:none;}
+
+.suratA4{
+width:210mm;
+min-height:297mm;
+padding:25mm;
+margin:auto;
+background:white;
+font-size:18px;
+line-height:1.8;
+}
+
+.statusBox{
+margin:25px 0;
+padding:15px;
+text-align:center;
+font-size:24px;
+font-weight:bold;
+border:3px solid black;
+}
+
+.statusLulus{color:green;}
+.statusTidak{color:red;}
+
+.ttd{
+margin-top:90px;
+text-align:right;
+}
+
+@media print{
+
+body *{visibility:hidden;}
+
+#areaSurat,#areaSurat *{visibility:visible;}
+
+#areaSurat{
+position:absolute;
+left:0;
+top:0;
+width:210mm;
+}
+
+button{display:none;}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container" id="siswaPage">
+
+<div class="headerBox">
+<img src="logo2.png" onclick="klikLogoAdmin()">
+<div>
+<h2>SMA XAVERIUS 3 PALEMBANG</h2>
+<h4>Tahun Ajaran 2025/2026</h4>
+</div>
+</div>
+
+<h3>PENGUMUMAN KELULUSAN</h3>
+
+<input type="text" id="nisn" placeholder="NISN">
+<input type="text" id="nama" placeholder="Nama Lengkap">
+<input type="date" id="tgl">
+
+<button class="primary" onclick="cekKelulusan()">CEK KELULUSAN</button>
+
+</div>
+
+<div class="container hidden" id="adminLogin">
+<h3>Login Admin</h3>
+<input type="password" id="adminPass" placeholder="Password">
+<button class="primary" onclick="loginAdmin()">Login</button>
+<button onclick="kembaliKeSiswa()">Kembali</button>
+</div>
+
+<div class="container hidden" id="adminPanel">
+
+<h3>Panel Admin</h3>
+
+<input type="file" id="fileExcel" accept=".xlsx,.xls">
+<button class="primary" onclick="importExcel()">Import Excel</button>
+
+<hr>
+
+<table border="1" width="100%" style="border-collapse:collapse;">
+<tr>
+<th>NISN</th>
+<th>Nama</th>
+<th>Kelas</th>
+<th>Tanggal Lahir</th>
+<th>Status</th>
+<th>Aksi</th>
+</tr>
+<tbody id="adminTable"></tbody>
+</table>
+
+<br>
+
+<button class="success" onclick="tambahBaris()">+ Tambah Data</button>
+
+<br><br>
+
+<button class="primary" onclick="simpanData()">Simpan Semua</button>
+
+<button style="background:red;color:white;" onclick="hapusSemuaData()">
+Hapus Semua Data
+</button>
+
+<button onclick="logoutAdmin()">Logout</button>
+<button onclick="kembaliKeSiswa()">Kembali</button>
+
+</div>
+
+<div id="areaSurat" class="hidden"></div>
+
+<script>
+
+const password="admin123";
+const STORAGE_KEY="DATA_SISWA_XAVERIUS";
+
+let hitungKlikLogo=0;
+
+function klikLogoAdmin(){
+
+hitungKlikLogo++;
+
+if(hitungKlikLogo===3){
+bukaAdmin();
+hitungKlikLogo=0;
+}
+
+setTimeout(()=>{hitungKlikLogo=0;},2000);
+
+}
+
+function formatTanggalExcel(tgl){
+
+if(typeof tgl==="number"){
+let d=XLSX.SSF.parse_date_code(tgl);
+return d.y+"-"+String(d.m).padStart(2,"0")+"-"+String(d.d).padStart(2,"0");
+}
+
+if(typeof tgl==="string"){
+let sep=tgl.includes("-")?"-":"/";
+let p=tgl.split(sep);
+if(p.length===3){
+return p[2]+"-"+p[1].padStart(2,"0")+"-"+p[0].padStart(2,"0");
+}
+}
+
+return tgl;
+
+}
+
+function bukaAdmin(){
+adminLogin.classList.remove("hidden");
+siswaPage.classList.add("hidden");
+}
+
+function kembaliKeSiswa(){
+adminLogin.classList.add("hidden");
+adminPanel.classList.add("hidden");
+areaSurat.classList.add("hidden");
+siswaPage.classList.remove("hidden");
+
+nisn.value="";
+nama.value="";
+tgl.value="";
+}
+
+function loginAdmin(){
+
+if(adminPass.value===password){
+
+adminLogin.classList.add("hidden");
+adminPanel.classList.remove("hidden");
+
+loadData();
+
+}else{
+
+alert("Password Salah");
+
+}
+
+}
+
+function logoutAdmin(){
+adminPass.value="";
+adminPanel.classList.add("hidden");
+adminLogin.classList.remove("hidden");
+}
+
+function tambahBaris(nisn="",nama="",kelas="",tgl="",status="LULUS"){
+
+adminTable.innerHTML+=`
+
+<tr>
+
+<td><input value="${nisn}"></td>
+<td><input value="${nama}"></td>
+<td><input value="${kelas}"></td>
+<td><input type="date" value="${tgl}"></td>
+
+<td>
+<select>
+<option ${status==="LULUS"?"selected":""}>LULUS</option>
+<option ${status==="TIDAK LULUS"?"selected":""}>TIDAK LULUS</option>
+</select>
+</td>
+
+<td>
+<button onclick="hapusBaris(this)" style="background:red;color:white;">Hapus</button>
+</td>
+
+</tr>
+
+`;
+
+}
+
+function hapusBaris(btn){
+btn.parentElement.parentElement.remove();
+}
+
+function simpanData(){
+
+let rows=document.querySelectorAll("#adminTable tr");
+
+let semuaData=[];
+
+rows.forEach(row=>{
+
+let el=row.querySelectorAll("input,select");
+
+semuaData.push({
+
+nisn:el[0].value,
+nama:el[1].value,
+kelas:el[2].value,
+tgl:el[3].value,
+status:el[4].value
+
+});
+
+});
+
+localStorage.setItem(STORAGE_KEY,JSON.stringify(semuaData));
+
+alert("Data tersimpan permanen");
+
+}
+
+function loadData(){
+
+adminTable.innerHTML="";
+
+let semuaData=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];
+
+semuaData.forEach(data=>{
+tambahBaris(data.nisn,data.nama,data.kelas,data.tgl,data.status);
+});
+
+}
+
+function hapusSemuaData(){
+
+let konfirmasi=confirm("Apakah Anda yakin ingin menghapus SEMUA data siswa?");
+
+if(konfirmasi){
+
+localStorage.removeItem(STORAGE_KEY);
+adminTable.innerHTML="";
+
+alert("Semua data berhasil dihapus");
+
+}
+
+}
+
+function importExcel(){
+
+let file=fileExcel.files[0];
+
+if(!file){
+alert("Pilih file Excel terlebih dahulu");
+return;
+}
+
+let reader=new FileReader();
+
+reader.onload=function(e){
+
+let data=new Uint8Array(e.target.result);
+let workbook=XLSX.read(data,{type:"array"});
+
+let sheet=workbook.Sheets[workbook.SheetNames[0]];
+let json=XLSX.utils.sheet_to_json(sheet,{header:1});
+
+json.shift();
+
+json.forEach(row=>{
+
+if(row.length>=5){
+
+tambahBaris(
+row[0]||"",
+row[1]||"",
+row[2]||"",
+formatTanggalExcel(row[3]||""),
+row[4]||"LULUS"
+);
+
+}
+
+});
+
+};
+
+reader.readAsArrayBuffer(file);
+
+}
+
+function cekKelulusan(){
+
+let nisnInput=nisn.value.trim();
+let namaInput=nama.value.trim().toLowerCase();
+let tglInput=tgl.value;
+
+let semuaData=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];
+
+let data=semuaData.find(s=>
+
+s.nisn===nisnInput &&
+s.nama.toLowerCase()===namaInput &&
+s.tgl===tglInput
+
+);
+
+if(data){
+tampilkanSurat(data);
+}else{
+alert("Data tidak ditemukan");
+}
+
+}
+
+function tampilkanSurat(data){
+
+siswaPage.classList.add("hidden");
+areaSurat.classList.remove("hidden");
+
+let today=new Date().toLocaleDateString("id-ID");
+
+let statusClass=data.status==="LULUS"?"statusLulus":"statusTidak";
+
+areaSurat.innerHTML=`
+
+<div class="suratA4">
+
+<table style="width:100%; border-bottom:4px double black; margin-bottom:20px;">
+<tr>
+
+<td style="width:130px;">
+<img src="logo2.png" style="width:120px;">
+</td>
+
+<td style="text-align:center; line-height:1.4;">
+<b style="font-size:26px;">SMA XAVERIUS 3 PALEMBANG</b><br>
+JL. Kol. Atmo No.132, 17 Ilir, Palembang<br>
+Tahun Ajaran 2025/2026
+</td>
+
+<td style="width:130px;"></td>
+
+</tr>
+</table>
+
+<h2 style="text-align:center;margin-bottom:5px;">SURAT KETERANGAN LULUS</h2>
+
+<p style="text-align:center;">
+Nomor : 421.3/001/SMA-X3/2026
+</p>
+
+<br>
+
+<p>Yang bertanda tangan di bawah ini Kepala SMA Xaverius 3 Palembang menerangkan bahwa:</p>
+
+<p style="margin-left:40px;">
+Nama : <b>${data.nama}</b><br>
+NISN : <b>${data.nisn}</b><br>
+Kelas : <b>${data.kelas}</b><br>
+Tanggal Lahir : <b>${data.tgl}</b>
+</p>
+
+<div class="statusBox ${statusClass}">
+${data.status}
+</div>
+
+<p>Berdasarkan hasil rapat dewan guru, siswa tersebut dinyatakan <b>${data.status}</b>.</p>
+
+<p>Surat keterangan ini dibuat untuk dipergunakan sebagaimana mestinya.</p>
+
+<div class="ttd">
+Palembang, ${today}<br>
+Kepala Sekolah<br><br><br><br>
+<b>Agustinus Sugiarno, M.Pd</b>
+</div>
+
+<br>
+
+<button onclick="window.print()">Cetak Surat</button>
+<button onclick="kembaliKeSiswa()">Kembali</button>
+
+</div>
+
+`;
+
+}
+
+</script>
+
+</body>
+</html>
