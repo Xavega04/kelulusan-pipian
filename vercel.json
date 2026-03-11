@@ -2,7 +2,7 @@
   "routes": [
     {
       "src": "/",
-      "dest": "/lulus.html"
+      "dest": "/index.html"
     }
   ]
 }
