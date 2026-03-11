@@ -1,0 +1,13 @@
+{
+  "cleanUrls": true,
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/lulus.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}
